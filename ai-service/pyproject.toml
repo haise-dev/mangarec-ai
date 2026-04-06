@@ -1,0 +1,18 @@
+[project]
+name = "mangarec-ai"
+version = "0.1.0"
+description = "AI Recommendation Service for MangaRec"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "langgraph",
+    "langchain",
+    "langchain-openai",
+    "qdrant-client",
+    "supabase",
+    "python-dotenv",
+    "pydantic-settings",
+]
+
+[tool.black]
+line-length = 88

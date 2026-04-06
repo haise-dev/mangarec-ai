@@ -1,0 +1,16 @@
+services:
+  ai-service:
+    build: ./ai-service
+    ports:
+      - "8000:8000"
+    env_file: ./ai-service/.env
+
+  be-service:
+    build: ./be-service
+    ports:
+      - "8080:8080"
+
+  fe-service:
+    build: ./fe-service
+    ports:
+      - "3000:3000"

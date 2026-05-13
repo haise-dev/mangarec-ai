@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mangarec-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mangarec}
+      POSTGRES_USER: ${POSTGRES_USER:-mangarec}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mangarec_password}
+      TZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - mangarec_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  flyway:
+    image: flyway/flyway:10-alpine
+    container_name: mangarec-flyway
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - -url=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mangarec}
+      - -user=${POSTGRES_USER:-mangarec}
+      - -password=${POSTGRES_PASSWORD:-mangarec_password}
+      - -schemas=mangarec
+      - -defaultSchema=mangarec
+      - -connectRetries=60
+      - migrate
+    volumes:
+      - ./src/main/resources/db/migration:/flyway/sql:ro
+
+volumes:
+  mangarec_postgres_data:

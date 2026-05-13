@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -108,6 +109,18 @@ public class GlobalExceptionHandling {
         errorResponse.setStatus(UNAUTHORIZED.value());
         errorResponse.setError(UNAUTHORIZED.getReasonPhrase());
         errorResponse.setMessage("Username or password is incorrect");
+
+        return errorResponse;
+    }
+
+    @ExceptionHandler({UnauthorizedException.class, BadCredentialsException.class})
+    public ErrorResponse handleUnauthorizedException(RuntimeException e, WebRequest request) {
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(new Date());
+        errorResponse.setPath(request.getDescription(false).replace("uri=", ""));
+        errorResponse.setStatus(UNAUTHORIZED.value());
+        errorResponse.setError(UNAUTHORIZED.getReasonPhrase());
+        errorResponse.setMessage(e.getMessage());
 
         return errorResponse;
     }

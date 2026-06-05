@@ -9,7 +9,4 @@ qdrant_client = AsyncQdrantClient(
 )
 
 # Initialize Supabase Client
-supabase_client: Client = create_client(
-    settings.SUPABASE_URL,
-    settings.SUPABASE_KEY
-)
+supabase_client: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)

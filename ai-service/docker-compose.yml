@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mangarec-ai-service
+    ports:
+      - "8000:8000"
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+    depends_on:
+      - qdrant
+    volumes:
+      # Mount the local cache so model is persistent across runs if developing
+      - hf-cache:/app/.cache/huggingface
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: mangarec-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+volumes:
+  qdrant-data:
+  hf-cache:

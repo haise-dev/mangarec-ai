@@ -23,6 +23,9 @@ RUN uv pip install --python /app/.venv/bin/python \
 # Copy application source
 COPY app/ app/
 
+# Lint code: check for logic errors and bugs, but do not fail on minor formatting
+RUN uv run ruff check .
+
 # Pre-download the HuggingFace model so it's baked into the image (AC-1, AC-3)
 RUN uv run python app/core/download_model.py
 

@@ -1,0 +1,19 @@
+services:
+  fe-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: fe-service-dev
+    ports:
+      - "3000:3000"
+    networks:
+      - mangarec-network
+    volumes:
+      - .:/app
+      - /app/node_modules
+    # command: npm run dev
+
+networks:
+  mangarec-network:
+    name: mangarec_global_network
+    external: true

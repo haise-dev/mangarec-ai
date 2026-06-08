@@ -1,16 +1,11 @@
-services:
-  ai-service:
-    build: ./ai-service
-    ports:
-      - "8000:8000"
-    env_file: ./ai-service/.env
+name: mangarec-prod
 
-  be-service:
-    build: ./be-service
-    ports:
-      - "8080:8080"
+include:
+  - ./ai-service/docker-compose.yml
+  - ./be-service/docker-compose.yml
+  - ./fe-service/docker-compose.yml
 
-  fe-service:
-    build: ./fe-service
-    ports:
-      - "3000:3000"
+networks:
+  mangarec-network:
+    driver: bridge
+    name: mangarec_global_network

@@ -5,7 +5,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.qdrant import get_qdrant_client, init_qdrant
+from app.core.ml import MLManager
 from app.db.session import engine, init_db
+from app.api.endpoints import search
 
 
 @asynccontextmanager
@@ -22,6 +24,10 @@ async def lifespan(app: FastAPI):
     
     # Initialize Qdrant collection on startup
     init_qdrant()
+    
+    # Load ML Models into memory
+    MLManager.get_instance().load_models()
+    
     yield
 
 app = FastAPI(
@@ -56,3 +62,5 @@ async def health_check() -> dict[str, str]:
         status["sqlite"] = "error"
 
     return status
+
+app.include_router(search.router, prefix="/api/v1/search", tags=["Search"])

@@ -41,6 +41,8 @@ RUN mkdir -p /app/data
 COPY --from=builder /app/.venv /app/.venv
 # Bring over application code
 COPY --from=builder /app/app ./app
+# Bring over scripts
+COPY scripts/ ./scripts/
 # Bring over the cached HuggingFace model
 COPY --from=builder /root/.cache/huggingface /app/.cache/huggingface
 

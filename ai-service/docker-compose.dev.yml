@@ -2,27 +2,27 @@ services:
   ai-service:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: ai-service-prod
+      dockerfile: Dockerfile.dev
+    container_name: ai-service-dev
     ports:
       - "8000:8000"
     networks:
       - mangarec-network
-    restart: unless-stopped
     env_file: .env
     volumes:
-      - ./data:/app/data
+      # Mount entire source code for hot-reloading
+      - .:/app
+    command: uv run fastapi dev app/main.py --host 0.0.0.0 --port 8000
 
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: qdrant-prod
+    container_name: qdrant-dev
     ports:
       - "6333:6333"
     networks:
       - mangarec-network
     volumes:
-      - qdrant_data_prod:/qdrant/storage
-    restart: unless-stopped
+      - qdrant_data_dev:/qdrant/storage
 
 networks:
   mangarec-network:
@@ -30,4 +30,4 @@ networks:
     external: true
 
 volumes:
-  qdrant_data_prod:
+  qdrant_data_dev:

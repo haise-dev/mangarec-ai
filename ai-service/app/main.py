@@ -5,15 +5,29 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.qdrant import get_qdrant_client, init_qdrant
+from app.core.ml import MLManager
 from app.db.session import engine, init_db
+from app.api.endpoints import search
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize SQLite tables on startup
-    init_db()
+    # Ensure data directory exists
+    from app.db.session import _ensure_data_dir
+    _ensure_data_dir()
+    
+    # Run Alembic migrations on startup
+    from alembic import command
+    from alembic.config import Config
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+    
     # Initialize Qdrant collection on startup
     init_qdrant()
+    
+    # Load ML Models into memory
+    MLManager.get_instance().load_models()
+    
     yield
 
 app = FastAPI(
@@ -48,3 +62,5 @@ async def health_check() -> dict[str, str]:
         status["sqlite"] = "error"
 
     return status
+
+app.include_router(search.router, prefix="/api/v1/search", tags=["Search"])

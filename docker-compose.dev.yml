@@ -1,0 +1,11 @@
+name: mangarec-dev
+
+include:
+  - ./ai-service/docker-compose.dev.yml
+  - ./be-service/docker-compose.dev.yml
+  - ./fe-service/docker-compose.dev.yml
+
+networks:
+  mangarec-network:
+    driver: bridge
+    name: mangarec_global_network

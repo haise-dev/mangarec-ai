@@ -1,0 +1,16 @@
+services:
+  fe-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fe-service-prod
+    ports:
+      - "3000:3000"
+    networks:
+      - mangarec-network
+    restart: unless-stopped
+
+networks:
+  mangarec-network:
+    name: mangarec_global_network
+    external: true

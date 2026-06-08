@@ -2,19 +2,21 @@ services:
   be-service:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: be-service-prod
+      dockerfile: Dockerfile.dev
+    container_name: be-service-dev
     ports:
       - "8080:8080"
     networks:
       - mangarec-network
-    restart: unless-stopped
     env_file: .env
+    volumes:
+      # Mount entire source code for hot-reloading
+      - .:/app
+    # command: ... (Depends on tech stack, e.g., npm run dev, or spring-boot:run)
 
-  # Add Postgres or Redis here later for BE specific storage
   postgres:
     image: postgres:15-alpine
-    container_name: postgres-prod
+    container_name: postgres-dev
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: rootpassword
@@ -22,8 +24,9 @@ services:
     networks:
       - mangarec-network
     volumes:
-      - pg_data_prod:/var/lib/postgresql/data
-    restart: unless-stopped
+      - pg_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
 networks:
   mangarec-network:
@@ -31,4 +34,4 @@ networks:
     external: true
 
 volumes:
-  pg_data_prod:
+  pg_data_dev:

@@ -11,20 +11,11 @@ WORKDIR /app
 # Copy dependency manifests first (layer caching)
 COPY pyproject.toml uv.lock ./
 
-# Install project dependencies (no venv inside Docker)
+# Install project dependencies — CPU-only torch resolved via uv.lock
 RUN uv sync --frozen --no-install-project --no-dev
-
-# Swap in CPU-only PyTorch to avoid pulling ~2 GB of CUDA libs
-RUN uv pip install --python /app/.venv/bin/python \
-    --torch-backend cpu \
-    --reinstall-package torch \
-    torch
 
 # Copy application source
 COPY app/ app/
-
-# Lint code: check for logic errors and bugs, but do not fail on minor formatting
-RUN uv run ruff check .
 
 # Pre-download the HuggingFace model so it's baked into the image (AC-1, AC-3)
 RUN uv run python app/core/download_model.py
@@ -42,6 +33,9 @@ ENV OMP_NUM_THREADS=1 \
     HF_HOME=/app/.cache/huggingface
 
 WORKDIR /app
+
+# Create data directory for SQLite database
+RUN mkdir -p /app/data
 
 # Bring over installed packages from builder
 COPY --from=builder /app/.venv /app/.venv

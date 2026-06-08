@@ -8,12 +8,17 @@ services:
     container_name: mangarec-ai-service
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
+      - DATABASE_URL=sqlite:////app/data/manga_metadata.db
     depends_on:
       - qdrant
     volumes:
+      # Bind mount for SQLite data persistence (AC-1, AC-3)
+      - ./data:/app/data
       # Mount the local cache so model is persistent across runs if developing
       - hf-cache:/app/.cache/huggingface
 

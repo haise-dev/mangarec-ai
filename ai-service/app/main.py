@@ -1,12 +1,17 @@
 """MangaRec AI Service — FastAPI application entry point."""
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from app.core.qdrant import init_qdrant, get_qdrant_client
+from app.core.qdrant import get_qdrant_client, init_qdrant
+from app.db.session import engine, init_db
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize SQLite tables on startup
+    init_db()
     # Initialize Qdrant collection on startup
     init_qdrant()
     yield
@@ -21,13 +26,25 @@ app = FastAPI(
 
 @app.get("/health")
 async def health_check() -> dict[str, str]:
-    """Liveness probe — returns service status and Qdrant DB connection."""
-    status = {"status": "ok", "qdrant": "disconnected"}
+    """Liveness probe — returns service status, Qdrant & SQLite connections."""
+    status = {"status": "ok", "qdrant": "disconnected", "sqlite": "disconnected"}
+
+    # Check Qdrant
     try:
         client = get_qdrant_client()
-        # Ping Qdrant by attempting to fetch collections
         client.get_collections()
         status["qdrant"] = "connected"
     except Exception:
         status["qdrant"] = "error"
+
+    # Check SQLite
+    try:
+        from sqlalchemy import text
+
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        status["sqlite"] = "connected"
+    except Exception:
+        status["sqlite"] = "error"
+
     return status

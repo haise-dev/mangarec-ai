@@ -11,3 +11,6 @@ __pycache__/
 .antigravitycli/
 .mypy_cache/
 *.egg-info/
+
+# SQLite data (lives on bind mount, not in image)
+data/

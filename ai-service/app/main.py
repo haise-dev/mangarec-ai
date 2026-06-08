@@ -10,8 +10,16 @@ from app.db.session import engine, init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize SQLite tables on startup
-    init_db()
+    # Ensure data directory exists
+    from app.db.session import _ensure_data_dir
+    _ensure_data_dir()
+    
+    # Run Alembic migrations on startup
+    from alembic import command
+    from alembic.config import Config
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+    
     # Initialize Qdrant collection on startup
     init_qdrant()
     yield

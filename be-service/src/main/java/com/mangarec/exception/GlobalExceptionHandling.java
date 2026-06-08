@@ -10,9 +10,11 @@ import lombok.Setter;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
@@ -228,6 +230,25 @@ public class GlobalExceptionHandling {
         errorResponse.setPath(request.getDescription(false).replace("uri=", ""));
         errorResponse.setStatus(CONFLICT.value());
         errorResponse.setError(CONFLICT.getReasonPhrase());
+        errorResponse.setMessage(e.getMessage());
+
+        return errorResponse;
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    @ResponseStatus(TOO_MANY_REQUESTS)
+    public ErrorResponse handleRateLimitExceededException(RateLimitExceededException e, WebRequest request) {
+        if (request instanceof ServletWebRequest servletWebRequest
+                && servletWebRequest.getResponse() != null
+                && e.getRetryAfterSeconds() > 0) {
+            servletWebRequest.getResponse().setHeader("Retry-After", String.valueOf(e.getRetryAfterSeconds()));
+        }
+
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(new Date());
+        errorResponse.setPath(request.getDescription(false).replace("uri=", ""));
+        errorResponse.setStatus(TOO_MANY_REQUESTS.value());
+        errorResponse.setError(TOO_MANY_REQUESTS.getReasonPhrase());
         errorResponse.setMessage(e.getMessage());
 
         return errorResponse;

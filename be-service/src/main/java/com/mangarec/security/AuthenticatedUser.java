@@ -2,12 +2,14 @@ package com.mangarec.security;
 
 import com.mangarec.domain.user.entity.UserAuthIdentityEntity;
 import com.mangarec.domain.user.entity.UserEntity;
+import com.mangarec.domain.user.model.SubscriptionStatus;
 import com.mangarec.domain.user.model.UserStatus;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +20,8 @@ public class AuthenticatedUser implements UserDetails {
     private final String email;
     private final String password;
     private final UserStatus status;
+    private final SubscriptionStatus subscriptionStatus;
+    private final Instant subscriptionExpiredAt;
     private final List<GrantedAuthority> authorities;
 
     public AuthenticatedUser(UserEntity user, UserAuthIdentityEntity localIdentity) {
@@ -33,6 +37,8 @@ public class AuthenticatedUser implements UserDetails {
         this.email = user.getEmail();
         this.password = password;
         this.status = user.getStatus();
+        this.subscriptionStatus = user.getSubscriptionStatus();
+        this.subscriptionExpiredAt = user.getSubscriptionExpiredAt();
         this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
     }
 

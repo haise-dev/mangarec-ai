@@ -35,6 +35,7 @@ import com.mangarec.features.auth.service.AuthService;
 import com.mangarec.features.auth.service.GoogleAccount;
 import com.mangarec.features.auth.service.GoogleTokenVerifier;
 import com.mangarec.features.auth.service.OtpMailService;
+import com.mangarec.features.ratelimit.service.OtpRateLimitService;
 import com.mangarec.security.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -71,6 +72,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final GoogleTokenVerifier googleTokenVerifier;
     private final OtpMailService otpMailService;
+    private final OtpRateLimitService otpRateLimitService;
 
     @Value("${auth.password-reset.otp-expiry-minutes}")
     private long passwordResetOtpExpiryMinutes;
@@ -152,6 +154,8 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request, HttpServletRequest httpRequest) {
         String email = normalizeEmail(request.getEmail());
+        otpRateLimitService.checkForgotPassword(email, httpRequest);
+
         Optional<UserEntity> userOptional = userRepository.findByEmailIgnoreCase(email);
         if (userOptional.isEmpty()) {
             return;

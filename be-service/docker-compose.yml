@@ -36,5 +36,22 @@ services:
     volumes:
       - ./src/main/resources/db/migration:/flyway/sql:ro
 
+  redis:
+    image: redis:7-alpine
+    container_name: mangarec-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - mangarec_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
 volumes:
   mangarec_postgres_data:
+  mangarec_redis_data:

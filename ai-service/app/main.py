@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.core.qdrant import get_qdrant_client, init_qdrant
 from app.core.ml import MLManager
@@ -65,3 +66,6 @@ async def health_check() -> dict[str, str]:
 
 app.include_router(search.router, prefix="/api/v1/search", tags=["Search"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+

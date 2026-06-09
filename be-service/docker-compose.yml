@@ -10,6 +10,8 @@ services:
       TZ: UTC
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - mangarec-network
     volumes:
       - mangarec_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -35,6 +37,8 @@ services:
       - migrate
     volumes:
       - ./src/main/resources/db/migration:/flyway/sql:ro
+    networks:
+      - mangarec-network
 
   redis:
     image: redis:7-alpine
@@ -43,6 +47,8 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - mangarec-network
     volumes:
       - mangarec_redis_data:/data
     healthcheck:
@@ -55,3 +61,8 @@ services:
 volumes:
   mangarec_postgres_data:
   mangarec_redis_data:
+
+networks:
+  mangarec-network:
+    driver: bridge
+    name: mangarec_global_network

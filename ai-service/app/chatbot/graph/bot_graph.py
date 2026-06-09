@@ -26,11 +26,12 @@ def retriever_node(state: AgentState, config: RunnableConfig):
     
     mangas = []
     for r in results:
+        m = r["manga"]
         mangas.append({
-            "id": r.id,
-            "title": r.title,
-            "summary": r.summary,
-            "score": r.score
+            "id": m.id,
+            "title": m.title_main,
+            "summary": m.description_vi or m.description_en,
+            "score": r["final_score"]
         })
         
     return {"mangas": mangas}

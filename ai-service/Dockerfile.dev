@@ -1,0 +1,32 @@
+FROM python:3.12-slim
+
+# Install uv for fast dependency management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+# Set environment variables for local development
+ENV OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    TOKENIZERS_PARALLELISM=false \
+    TRANSFORMERS_NO_ADVISORY_WARNINGS=1 \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
+
+# Copy dependency manifests first
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies into /opt/venv so they are not shadowed 
+# when we volume-mount the source code over /app
+RUN uv sync --frozen
+
+# Pre-download the HuggingFace model so it's baked into the dev image
+# This prevents the app from hanging at startup.
+COPY app/core/download_model.py ./app/core/download_model.py
+RUN python app/core/download_model.py
+
+# We don't COPY the rest of source code here because it will be mounted via docker-compose.dev.yml
+
+EXPOSE 8000
+
+CMD ["fastapi", "dev", "app/main.py", "--host", "0.0.0.0", "--port", "8000"]

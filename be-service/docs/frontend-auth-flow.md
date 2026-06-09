@@ -12,6 +12,25 @@ All auth responses use:
 }
 ```
 
+## Guest Session
+
+`POST /api/guests`
+
+Backend returns `data.guestId` and sets an HttpOnly cookie named `mangarec_guest_id`.
+
+For web FE, call this once before guest chat and send later requests with credentials:
+
+```js
+fetch("/api/chat", {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: "Recommend action manga" })
+})
+```
+
+If cookie-based flow is not available, send the backend-issued value in `X-Guest-Id`.
+
 ## Register
 
 `POST /api/v1/auth/register`
@@ -93,12 +112,32 @@ Backend always returns success-style response to avoid revealing whether an emai
 
 If OTP is valid, backend updates local password. Google-only users can also create a local password through this flow.
 
+## Chat Rate Limit
+
+`POST /api/chat`
+
+```json
+{
+  "message": "Recommend me a completed action manga with comedy."
+}
+```
+
+Current implementation returns mock AI data. Redis rate limit already applies:
+
+- Guest: 20 AI requests/day/guest_id plus 100 AI requests/day/IP.
+- Free user: 20 AI requests/day/userId.
+- Pro user: token bucket 30 burst, refill 10/minute, safety cap 1000/day.
+- Concurrent AI requests: Guest 1, Free 2, Pro 5.
+
+When backend returns `429`, read `Retry-After` and show a wait/upgrade state instead of retrying immediately.
+
 ## Error Handling
 
 Common statuses:
 
 - `400`: validation error
 - `401`: invalid credentials, invalid token, invalid Google id token
+- `429`: rate limit exceeded
 - `409`: duplicate email or conflicting data
 - `500`: unexpected server error
 

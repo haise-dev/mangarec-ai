@@ -31,6 +31,13 @@ spring:
         jdbc:
           time_zone: UTC
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      repositories:
+        enabled: false
+
   mail:
     host: ${SPRING_MAIL_HOST:smtp.gmail.com}
     port: ${SPRING_MAIL_PORT:587}
@@ -73,3 +80,21 @@ google:
 auth:
   password-reset:
     otp-expiry-minutes: ${PASSWORD_RESET_OTP_EXPIRY_MINUTES:10}
+
+rate-limit:
+  ai:
+    guest-daily-limit: ${RATE_LIMIT_AI_GUEST_DAILY:20}
+    free-daily-limit: ${RATE_LIMIT_AI_FREE_DAILY:20}
+    ip-daily-limit: ${RATE_LIMIT_AI_IP_DAILY:100}
+    pro-burst-capacity: ${RATE_LIMIT_AI_PRO_BURST:30}
+    pro-refill-per-minute: ${RATE_LIMIT_AI_PRO_REFILL_PER_MINUTE:10}
+    pro-daily-limit: ${RATE_LIMIT_AI_PRO_DAILY:1000}
+    concurrent:
+      guest: ${RATE_LIMIT_AI_CONCURRENT_GUEST:1}
+      free: ${RATE_LIMIT_AI_CONCURRENT_FREE:2}
+      pro: ${RATE_LIMIT_AI_CONCURRENT_PRO:5}
+  otp:
+    email-window-limit: ${RATE_LIMIT_OTP_EMAIL_15M:3}
+    email-daily-limit: ${RATE_LIMIT_OTP_EMAIL_DAILY:5}
+    ip-window-limit: ${RATE_LIMIT_OTP_IP_15M:10}
+    ip-daily-limit: ${RATE_LIMIT_OTP_IP_DAILY:30}

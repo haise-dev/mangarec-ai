@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from app.core.qdrant import get_qdrant_client, init_qdrant
 from app.core.ml import MLManager
 from app.db.session import engine, init_db
-from app.api.endpoints import search
+from app.api.endpoints import search, chat
 
 
 @asynccontextmanager
@@ -64,3 +64,4 @@ async def health_check() -> dict[str, str]:
     return status
 
 app.include_router(search.router, prefix="/api/v1/search", tags=["Search"])
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])

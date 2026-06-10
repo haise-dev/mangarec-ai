@@ -8,7 +8,9 @@ services:
       - "8000:8000"
     networks:
       - mangarec-network
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     volumes:
       # Mount entire source code for hot-reloading
       - .:/app

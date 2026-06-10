@@ -78,6 +78,8 @@ google:
     client-id: ${GOOGLE_AUTH_CLIENT_ID:}
 
 auth:
+  email-verification:
+    otp-expiry-minutes: ${EMAIL_VERIFICATION_OTP_EXPIRY_MINUTES:10}
   password-reset:
     otp-expiry-minutes: ${PASSWORD_RESET_OTP_EXPIRY_MINUTES:10}
 
@@ -98,3 +100,13 @@ rate-limit:
     email-daily-limit: ${RATE_LIMIT_OTP_EMAIL_DAILY:5}
     ip-window-limit: ${RATE_LIMIT_OTP_IP_15M:10}
     ip-daily-limit: ${RATE_LIMIT_OTP_IP_DAILY:30}
+
+payos:
+  client-id: ${PAYOS_CLIENT_ID:}
+  api-key: ${PAYOS_API_KEY:}
+  checksum-key: ${PAYOS_CHECKSUM_KEY:}
+  base-url: ${PAYOS_BASE_URL:https://api-merchant.payos.vn}
+  return-url: ${PAYOS_RETURN_URL:http://localhost:5173/payment/success}
+  cancel-url: ${PAYOS_CANCEL_URL:http://localhost:5173/payment/cancel}
+  webhook-url: ${PAYOS_WEBHOOK_URL:http://localhost:8080/api/v1/payments/payos/webhook}
+  payment-expiry-minutes: ${PAYOS_PAYMENT_EXPIRY_MINUTES:15}

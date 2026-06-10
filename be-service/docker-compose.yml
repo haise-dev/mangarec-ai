@@ -64,5 +64,5 @@ volumes:
 
 networks:
   mangarec-network:
-    driver: bridge
     name: mangarec_global_network
+    external: true

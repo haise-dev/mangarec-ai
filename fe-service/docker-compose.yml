@@ -3,12 +3,21 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-264778620233-r8k76djk9hqtcu9b0of9bqrgfd7kjcng.apps.googleusercontent.com}
+    image: mangarec-fe-service:latest
     container_name: fe-service-prod
     ports:
-      - "3000:3000"
+      - "${FE_PORT:-3000}:80"
     networks:
       - mangarec-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 networks:
   mangarec-network:

@@ -43,6 +43,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/guests").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/payments/plans").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/payos/webhook").permitAll()
                         .requestMatchers("/api/chat", "/api/recommendation", "/api/recommendation/**",
                                 "/api/ai", "/api/ai/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()

@@ -5,7 +5,9 @@ import com.mangarec.features.auth.controller.request.ForgotPasswordRequest;
 import com.mangarec.features.auth.controller.request.GoogleLoginRequest;
 import com.mangarec.features.auth.controller.request.LoginRequest;
 import com.mangarec.features.auth.controller.request.RegisterRequest;
+import com.mangarec.features.auth.controller.request.ResendEmailVerificationRequest;
 import com.mangarec.features.auth.controller.request.ResetPasswordRequest;
+import com.mangarec.features.auth.controller.request.VerifyEmailRequest;
 import com.mangarec.features.auth.controller.response.AuthUserResponse;
 import com.mangarec.features.auth.controller.response.TokenResponse;
 import com.mangarec.features.auth.service.AuthService;
@@ -77,6 +79,26 @@ public class AuthController {
     ) {
         authService.resetPassword(request, httpRequest);
         return ok("Password reset successful", null);
+    }
+
+    @Operation(summary = "Resend email verification OTP", description = "Send a new OTP for local email verification.")
+    @PostMapping("/resend-verification")
+    public ApiResponse<Void> resendEmailVerification(
+            @RequestBody @Valid ResendEmailVerificationRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        authService.resendEmailVerification(request, httpRequest);
+        return ok("If the account exists and is not verified, an OTP has been sent", null);
+    }
+
+    @Operation(summary = "Verify email", description = "Verify a local account email using a 6-digit OTP.")
+    @PostMapping("/verify-email")
+    public ApiResponse<Void> verifyEmail(
+            @RequestBody @Valid VerifyEmailRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        authService.verifyEmail(request, httpRequest);
+        return ok("Email verified successfully", null);
     }
 
     private <T> ApiResponse<T> ok(String message, T data) {

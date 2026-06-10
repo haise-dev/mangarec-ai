@@ -254,6 +254,19 @@ public class GlobalExceptionHandling {
         return errorResponse;
     }
 
+    @ExceptionHandler(PaymentGatewayException.class)
+    @ResponseStatus(BAD_GATEWAY)
+    public ErrorResponse handlePaymentGatewayException(PaymentGatewayException e, WebRequest request) {
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(new Date());
+        errorResponse.setPath(request.getDescription(false).replace("uri=", ""));
+        errorResponse.setStatus(BAD_GATEWAY.value());
+        errorResponse.setError(BAD_GATEWAY.getReasonPhrase());
+        errorResponse.setMessage(e.getMessage());
+
+        return errorResponse;
+    }
+
     /**
      * Handle exception when internal server error
      *

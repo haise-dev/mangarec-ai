@@ -4,8 +4,3 @@ include:
   - ./ai-service/docker-compose.yml
   - ./be-service/docker-compose.yml
   - ./fe-service/docker-compose.yml
-
-networks:
-  mangarec-network:
-    driver: bridge
-    name: mangarec_global_network

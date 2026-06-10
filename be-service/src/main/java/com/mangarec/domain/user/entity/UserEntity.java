@@ -52,8 +52,8 @@ public class UserEntity {
     @Column(name = "subscription_expired_at")
     private Instant subscriptionExpiredAt;
 
-    @Column(name = "stripe_customer_id", length = 100)
-    private String stripeCustomerId;
+    @Column(name = "payment_customer_id", length = 100)
+    private String paymentCustomerId;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

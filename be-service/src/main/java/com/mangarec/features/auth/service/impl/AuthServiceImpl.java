@@ -28,13 +28,16 @@ import com.mangarec.features.auth.controller.request.ForgotPasswordRequest;
 import com.mangarec.features.auth.controller.request.GoogleLoginRequest;
 import com.mangarec.features.auth.controller.request.LoginRequest;
 import com.mangarec.features.auth.controller.request.RegisterRequest;
+import com.mangarec.features.auth.controller.request.ResendEmailVerificationRequest;
 import com.mangarec.features.auth.controller.request.ResetPasswordRequest;
+import com.mangarec.features.auth.controller.request.VerifyEmailRequest;
 import com.mangarec.features.auth.controller.response.AuthUserResponse;
 import com.mangarec.features.auth.controller.response.TokenResponse;
 import com.mangarec.features.auth.service.AuthService;
 import com.mangarec.features.auth.service.GoogleAccount;
 import com.mangarec.features.auth.service.GoogleTokenVerifier;
 import com.mangarec.features.auth.service.OtpMailService;
+import com.mangarec.features.ratelimit.service.OtpRateLimitService;
 import com.mangarec.security.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -71,9 +74,13 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final GoogleTokenVerifier googleTokenVerifier;
     private final OtpMailService otpMailService;
+    private final OtpRateLimitService otpRateLimitService;
 
     @Value("${auth.password-reset.otp-expiry-minutes}")
     private long passwordResetOtpExpiryMinutes;
+
+    @Value("${auth.email-verification.otp-expiry-minutes}")
+    private long emailVerificationOtpExpiryMinutes;
 
     @Override
     @Transactional
@@ -102,6 +109,7 @@ public class AuthServiceImpl implements AuthService {
 
         createDefaultPreferences(user);
         claimGuestHistoryIfPresent(request.getGuestId(), user, httpRequest);
+        issueEmailVerificationOtp(user, httpRequest);
         saveAuthEvent(user, request.getGuestId(), AuthEventType.REGISTER, true, null, httpRequest);
 
         return toUserResponse(user);
@@ -129,6 +137,10 @@ public class AuthServiceImpl implements AuthService {
             saveAuthEvent(user, null, AuthEventType.LOGIN_FAILED, false, "User is not active", httpRequest);
             throw new UnauthorizedException("User is not active");
         }
+        if (!user.isEmailVerified()) {
+            saveAuthEvent(user, null, AuthEventType.LOGIN_FAILED, false, "Email is not verified", httpRequest);
+            throw new UnauthorizedException("Please verify your email before logging in");
+        }
 
         return issueTokens(user, request.getDeviceId(), httpRequest, AuthEventType.LOGIN_SUCCESS);
     }
@@ -152,6 +164,8 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request, HttpServletRequest httpRequest) {
         String email = normalizeEmail(request.getEmail());
+        otpRateLimitService.checkForgotPassword(email, httpRequest);
+
         Optional<UserEntity> userOptional = userRepository.findByEmailIgnoreCase(email);
         if (userOptional.isEmpty()) {
             return;
@@ -169,7 +183,7 @@ public class AuthServiceImpl implements AuthService {
         AuthActionTokenEntity token = new AuthActionTokenEntity();
         token.setUser(user);
         token.setPurpose(AuthActionPurpose.PASSWORD_RESET);
-        token.setTokenHash(hashOtp(email, otp));
+        token.setTokenHash(hashOtp(email, otp, AuthActionPurpose.PASSWORD_RESET));
         token.setExpiresAt(now.plusSeconds(passwordResetOtpExpiryMinutes * 60));
         actionTokenRepository.save(token);
 
@@ -187,7 +201,7 @@ public class AuthServiceImpl implements AuthService {
         AuthActionTokenEntity token = actionTokenRepository
                 .findByPurposeAndTokenHashAndUsedAtIsNullAndExpiresAtAfter(
                         AuthActionPurpose.PASSWORD_RESET,
-                        hashOtp(email, request.getOtp()),
+                        hashOtp(email, request.getOtp(), AuthActionPurpose.PASSWORD_RESET),
                         Instant.now()
                 )
                 .orElseThrow(() -> new InvalidDataException("OTP is invalid or expired"));
@@ -202,6 +216,54 @@ public class AuthServiceImpl implements AuthService {
                 .orElseGet(() -> newLocalIdentity(user, email));
         localIdentity.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         authIdentityRepository.save(localIdentity);
+
+        token.setUsedAt(Instant.now());
+        actionTokenRepository.save(token);
+
+        if (!user.isEmailVerified()) {
+            user.setEmailVerified(true);
+            userRepository.save(user);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void resendEmailVerification(
+            ResendEmailVerificationRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String email = normalizeEmail(request.getEmail());
+        otpRateLimitService.checkEmailVerification(email, httpRequest);
+
+        Optional<UserEntity> userOptional = userRepository.findByEmailIgnoreCase(email);
+        if (userOptional.isEmpty()) {
+            return;
+        }
+
+        UserEntity user = userOptional.get();
+        if (user.getStatus() != UserStatus.ACTIVE || user.isEmailVerified()) {
+            return;
+        }
+
+        issueEmailVerificationOtp(user, httpRequest);
+    }
+
+    @Override
+    @Transactional
+    public void verifyEmail(VerifyEmailRequest request, HttpServletRequest httpRequest) {
+        String email = normalizeEmail(request.getEmail());
+        AuthActionTokenEntity token = actionTokenRepository
+                .findByPurposeAndTokenHashAndUsedAtIsNullAndExpiresAtAfter(
+                        AuthActionPurpose.EMAIL_VERIFICATION,
+                        hashOtp(email, request.getOtp(), AuthActionPurpose.EMAIL_VERIFICATION),
+                        Instant.now()
+                )
+                .orElseThrow(() -> new InvalidDataException("OTP is invalid or expired"));
+
+        UserEntity user = token.getUser();
+        if (!email.equals(normalizeEmail(user.getEmail()))) {
+            throw new InvalidDataException("OTP is invalid or expired");
+        }
 
         token.setUsedAt(Instant.now());
         actionTokenRepository.save(token);
@@ -281,6 +343,22 @@ public class AuthServiceImpl implements AuthService {
         UserPreferenceEntity preferences = new UserPreferenceEntity();
         preferences.setUser(user);
         userPreferenceRepository.save(preferences);
+    }
+
+    private void issueEmailVerificationOtp(UserEntity user, HttpServletRequest request) {
+        String email = normalizeEmail(user.getEmail());
+        Instant now = Instant.now();
+        actionTokenRepository.markActiveTokensUsed(user, AuthActionPurpose.EMAIL_VERIFICATION, now, now);
+
+        String otp = generateOtp();
+        AuthActionTokenEntity token = new AuthActionTokenEntity();
+        token.setUser(user);
+        token.setPurpose(AuthActionPurpose.EMAIL_VERIFICATION);
+        token.setTokenHash(hashOtp(email, otp, AuthActionPurpose.EMAIL_VERIFICATION));
+        token.setExpiresAt(now.plusSeconds(emailVerificationOtpExpiryMinutes * 60));
+        actionTokenRepository.save(token);
+
+        otpMailService.sendEmailVerificationOtp(user.getEmail(), user.getName(), otp);
     }
 
     private void saveRefreshToken(
@@ -372,7 +450,7 @@ public class AuthServiceImpl implements AuthService {
         return "%06d".formatted(OTP_RANDOM.nextInt(1_000_000));
     }
 
-    private String hashOtp(String email, String otp) {
-        return RequestHashUtils.sha256(normalizeEmail(email) + ":" + otp);
+    private String hashOtp(String email, String otp, AuthActionPurpose purpose) {
+        return RequestHashUtils.sha256(purpose.name() + ":" + normalizeEmail(email) + ":" + otp);
     }
 }

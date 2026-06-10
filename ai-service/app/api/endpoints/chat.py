@@ -1,39 +1,52 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Any
-from app.chatbot.graph.dummy_graph import dummy_graph
+from sqlalchemy.orm import Session
+from qdrant_client import QdrantClient
+
+from app.chatbot.graph.bot_graph import bot_graph
 from app.core.tracing import get_tracer
+from app.db.session import get_db
+from app.core.qdrant import get_qdrant_client
 
 router = APIRouter()
 
 class ChatRequest(BaseModel):
-    message: str
+    query: str
 
 class ChatResponse(BaseModel):
-    reply: str
-    steps: list[str]
+    answer: str
+    mangas: list[dict]
 
 @router.post("/", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+async def chat_endpoint(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+    qdrant: QdrantClient = Depends(get_qdrant_client)
+):
     try:
         # Prepare LangGraph state
-        initial_state = {"input": request.message, "intermediate_steps": []}
+        initial_state = {"query": request.query, "mangas": [], "answer": ""}
         
         # Prepare tracer for graceful degradation
-        # If API key is missing or invalid, get_tracer() returns None and we don't crash
         tracer = get_tracer()
-        config = {}
+        config = {
+            "configurable": {
+                "db": db,
+                "qdrant": qdrant
+            }
+        }
         if tracer:
             config["callbacks"] = [tracer]
             
         # Invoke LangGraph
-        result = dummy_graph.invoke(initial_state, config=config)
+        result = bot_graph.invoke(initial_state, config=config)
         
         return ChatResponse(
-            reply=result.get("output", ""),
-            steps=result.get("intermediate_steps", [])
+            answer=result.get("answer", ""),
+            mangas=result.get("mangas", [])
         )
     except Exception as e:
         # Prevent the main process from crashing, but still return a standard HTTP 500
-        # LangSmith errors during tracing usually don't reach here because they happen in background threads.
         raise HTTPException(status_code=500, detail=str(e))
+

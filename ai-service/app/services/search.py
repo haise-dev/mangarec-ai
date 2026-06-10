@@ -108,13 +108,14 @@ class SearchService:
         q_filter = self._build_filter(filters)
 
         logger.info(f"Querying Qdrant (limit={candidates_limit})...")
-        qdrant_results = self.qdrant.search(
+        qdrant_response = self.qdrant.query_points(
             collection_name=COLLECTION_NAME,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=q_filter,
             limit=candidates_limit,
             with_payload=True,
         )
+        qdrant_results = qdrant_response.points
 
         if not qdrant_results:
             return []

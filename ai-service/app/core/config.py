@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     LANGCHAIN_ENDPOINT: str = "https://api.smith.langchain.com"
     LANGCHAIN_API_KEY: str | None = None
     LANGCHAIN_PROJECT: str = "mangarec_ai_service"
+    
+    # LLM Settings
+    GROQ_API_KEY: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

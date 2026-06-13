@@ -62,7 +62,7 @@ def _set_sqlite_pragmas(dbapi_connection, _connection_record):
     cursor.execute("PRAGMA journal_mode=WAL;")
     cursor.execute("PRAGMA journal_size_limit=67108864;")
     cursor.execute("PRAGMA foreign_keys=ON;")
-    cursor.execute("PRAGMA busy_timeout=5000;")
+    cursor.execute("PRAGMA busy_timeout=15000;")
     cursor.close()
 
 

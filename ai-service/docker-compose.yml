@@ -15,6 +15,23 @@ services:
     volumes:
       - ./data:/app/data
 
+  ai-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-worker-prod
+    networks:
+      - mangarec-network
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - qdrant
+    command: uv run scripts/scheduler.py
+
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant-prod

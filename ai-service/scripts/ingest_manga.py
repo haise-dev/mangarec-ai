@@ -20,9 +20,13 @@ from sqlalchemy.orm import Session
 # Ensure we can import app modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+from app.core.config import settings
 from app.core.qdrant import COLLECTION_NAME, get_qdrant_client, init_qdrant
 from app.db.models import (
     Author,
+    EtlCheckpoint,
     Manga,
     MangaAltTitle,
     MangaAuthor,
@@ -40,26 +44,59 @@ logger = logging.getLogger("ingest")
 API_BASE_URL = "https://api.mangadex.org"
 
 
-def fetch_trending_manga(limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
-    """Extract: Fetch a batch of trending manga with related entities."""
+def send_alert(message: str) -> None:
+    """Send alert via Webhook if configured."""
+    url = settings.ALERT_WEBHOOK_URL
+    if not url:
+        return
+    try:
+        requests.post(url, json={"content": f"🚨 [MangaRec ETL] {message}"}, timeout=10)
+    except Exception as e:
+        logger.warning(f"Failed to send alert webhook: {e}")
+
+
+def _log_retry(retry_state):
+    logger.warning(f"Fetch failed: {retry_state.outcome.exception()}. Retrying in {retry_state.next_action.sleep}s (Attempt {retry_state.attempt_number}/5)")
+
+
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=3, max=60),
+    retry=retry_if_exception_type((requests.exceptions.RequestException, ConnectionError)),
+    before_sleep=_log_retry,
+    reraise=True,
+)
+def fetch_manga(limit: int = 100, offset: int = 0, order_by: str = "followedCount", order_dir: str = "desc", updated_since: str = None) -> list[dict[str, Any]]:
+    """Extract: Fetch a batch of manga with related entities."""
     params = {
         "limit": limit,
         "offset": offset,
         "includes[]": ["author", "artist", "cover_art", "manga"],
-        "order[followedCount]": "desc",
+        f"order[{order_by}]": order_dir,
         "hasAvailableChapters": "true",
+        "originalLanguage[]": ["ja"],
     }
-    resp = requests.get(f"{API_BASE_URL}/manga", params=params, timeout=10)
+    if updated_since:
+        params["updatedAtSince"] = updated_since
+
+    resp = requests.get(f"{API_BASE_URL}/manga", params=params, timeout=30)
     resp.raise_for_status()
     return resp.json().get("data", [])
 
 
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=3, max=60),
+    retry=retry_if_exception_type((requests.exceptions.RequestException, ConnectionError)),
+    before_sleep=_log_retry,
+    reraise=True,
+)
 def fetch_statistics(manga_ids: list[str]) -> dict[str, Any]:
     """Extract: Fetch statistics for a batch of manga IDs."""
     if not manga_ids:
         return {}
     params = {"manga[]": manga_ids}
-    resp = requests.get(f"{API_BASE_URL}/statistics/manga", params=params, timeout=10)
+    resp = requests.get(f"{API_BASE_URL}/statistics/manga", params=params, timeout=30)
     resp.raise_for_status()
     return resp.json().get("statistics", {})
 
@@ -241,6 +278,13 @@ def load_batch(
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="MangaDex ETL Script")
+    parser.add_argument("--mode", type=str, choices=["seed", "daily", "test"], default="test", help="Run mode")
+    parser.add_argument("--limit", type=int, default=50, help="Total manga to fetch")
+    parser.add_argument("--updated-since", type=str, default=None, help="ISO datetime for delta sync (e.g. 2026-06-13T00:00:00)")
+    args = parser.parse_args()
+
     logger.info("Initializing Database and Qdrant...")
     init_db()
     init_qdrant()
@@ -254,21 +298,82 @@ def main():
     try:
         import time
         t0 = time.time()
-        # Fetch 50 for demo benchmark
-        logger.info(f"Fetching manga batch limit=50...")
-        t_api_start = time.time()
-        batch = fetch_trending_manga(limit=50, offset=0)
-        ids = [m["id"] for m in batch]
-        stats = fetch_statistics(ids)
-        t_api_end = time.time()
-        logger.info(f"API Fetch (50 manga + stats) took: {t_api_end - t_api_start:.2f}s")
         
-        t_load_start = time.time()
-        load_batch(db, q_client, model, batch, stats)
-        t_load_end = time.time()
-        logger.info(f"Transform & Load (SQLite + Qdrant) took: {t_load_end - t_load_start:.2f}s")
+        order_by = "followedCount"
+        if args.mode == "daily":
+            order_by = "latestUploadedChapter"
+            
+        logger.info(f"Starting ingestion in {args.mode.upper()} mode. Limit: {args.limit}, Order by: {order_by}, Updated Since: {args.updated_since}")
         
+        # Load or Create Checkpoint
+        checkpoint = db.query(EtlCheckpoint).filter_by(job_name=args.mode).first()
+        if checkpoint and checkpoint.status == "running":
+            logger.info(f"Resuming from checkpoint offset={checkpoint.last_offset}")
+            fetched_count = checkpoint.last_offset
+        else:
+            if not checkpoint:
+                checkpoint = EtlCheckpoint(job_name=args.mode)
+                db.add(checkpoint)
+            checkpoint.last_offset = 0
+            checkpoint.total_limit = args.limit
+            checkpoint.status = "running"
+            checkpoint.started_at = datetime.utcnow()
+            db.commit()
+            fetched_count = 0
+            
+        batch_size = 100
+        
+        while fetched_count < args.limit:
+            current_limit = min(batch_size, args.limit - fetched_count)
+            logger.info(f"Fetching manga batch limit={current_limit}, offset={fetched_count}...")
+            
+            t_api_start = time.time()
+            try:
+                batch = fetch_manga(limit=current_limit, offset=fetched_count, order_by=order_by, updated_since=args.updated_since)
+            except Exception as e:
+                logger.error(f"Fatal error fetching manga after all retries: {e}")
+                checkpoint.status = "failed"
+                db.commit()
+                send_alert(f"Job `{args.mode}` failed at offset {fetched_count}. Reason: {str(e)[:200]}")
+                raise
+                
+            if not batch:
+                logger.info(f"No more manga found at offset {fetched_count}. Reached end of results.")
+                break
+                
+            ids = [m["id"] for m in batch]
+            try:
+                stats = fetch_statistics(ids)
+            except Exception as e:
+                logger.error(f"Fatal error fetching stats after all retries: {e}")
+                checkpoint.status = "failed"
+                db.commit()
+                send_alert(f"Job `{args.mode}` failed at stats offset {fetched_count}. Reason: {str(e)[:200]}")
+                raise
+                
+            t_api_end = time.time()
+            logger.info(f"API Fetch ({len(batch)} manga + stats) took: {t_api_end - t_api_start:.2f}s")
+            
+            t_load_start = time.time()
+            load_batch(db, q_client, model, batch, stats)
+            t_load_end = time.time()
+            logger.info(f"Transform & Load (SQLite + Qdrant) took: {t_load_end - t_load_start:.2f}s")
+            
+            fetched_count += len(batch)
+            checkpoint.last_offset = fetched_count
+            db.commit()
+            
+            if len(batch) < current_limit:
+                logger.info("Batch returned fewer items than requested. End of results.")
+                break
+                
+            time.sleep(3)
+            
+        checkpoint.status = "completed"
+        db.commit()
         logger.info(f"Total Pipeline execution time: {time.time() - t0:.2f}s")
+        if args.mode == "seed":
+            send_alert(f"Seed sync completed successfully! Total fetched: {fetched_count}")
 
     except Exception as e:
         logger.error(f"ETL pipeline failed: {e}")

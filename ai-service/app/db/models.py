@@ -116,3 +116,16 @@ class RelatedManga(Base):
     relation_type: Mapped[str] = mapped_column(String)
 
     manga: Mapped["Manga"] = relationship(foreign_keys=[manga_id], back_populates="related")
+
+class EtlCheckpoint(Base):
+    """Tracks ETL pipeline progress for resume capability."""
+
+    __tablename__ = "etl_checkpoints"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_name: Mapped[str] = mapped_column(String, unique=True, index=True)
+    last_offset: Mapped[int] = mapped_column(Integer, default=0)
+    total_limit: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String)  # running, completed, failed
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -35,6 +35,7 @@ public class GlobalExceptionHandling {
      */
     @ExceptionHandler({ConstraintViolationException.class,
             MissingServletRequestParameterException.class, MethodArgumentNotValidException.class})
+    @ResponseStatus(BAD_REQUEST)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "400", description = "Bad Request",
                     content = {@Content(mediaType = APPLICATION_JSON_VALUE,
@@ -87,6 +88,7 @@ public class GlobalExceptionHandling {
      * @return
      */
     @ExceptionHandler(InternalAuthenticationServiceException.class)
+    @ResponseStatus(UNAUTHORIZED)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "401", description = "Unauthorized",
                     content = {@Content(mediaType = APPLICATION_JSON_VALUE,
@@ -116,6 +118,7 @@ public class GlobalExceptionHandling {
     }
 
     @ExceptionHandler({UnauthorizedException.class, BadCredentialsException.class})
+    @ResponseStatus(UNAUTHORIZED)
     public ErrorResponse handleUnauthorizedException(RuntimeException e, WebRequest request) {
         ErrorResponse errorResponse = new ErrorResponse();
         errorResponse.setTimestamp(new Date());
@@ -135,6 +138,7 @@ public class GlobalExceptionHandling {
      * @return
      */
     @ExceptionHandler({ForBiddenException.class, AccessDeniedException.class})
+    @ResponseStatus(FORBIDDEN)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "403", description = "Forbidden",
                     content = {@Content(mediaType = APPLICATION_JSON_VALUE,
@@ -171,6 +175,7 @@ public class GlobalExceptionHandling {
      * @return
      */
     @ExceptionHandler(ResourceNotFoundException.class)
+    @ResponseStatus(NOT_FOUND)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "404", description = "Not Found",
                     content = {@Content(mediaType = APPLICATION_JSON_VALUE,
@@ -207,6 +212,7 @@ public class GlobalExceptionHandling {
      * @return
      */
     @ExceptionHandler(InvalidDataException.class)
+    @ResponseStatus(CONFLICT)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "409", description = "Conflict",
                     content = {@Content(mediaType = APPLICATION_JSON_VALUE,
@@ -275,6 +281,7 @@ public class GlobalExceptionHandling {
      * @return error
      */
     @ExceptionHandler(Exception.class)
+    @ResponseStatus(INTERNAL_SERVER_ERROR)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "500", description = "Internal Server Error",
                     content = {@Content(mediaType = APPLICATION_JSON_VALUE,

@@ -45,7 +45,9 @@ def test_hybrid_search_empty(mock_get_instance):
     
     mock_db = MagicMock()
     mock_qdrant = MagicMock()
-    mock_qdrant.search.return_value = []
+    mock_response = MagicMock()
+    mock_response.points = []
+    mock_qdrant.query_points.return_value = mock_response
     
     service = SearchService(db=mock_db, qdrant=mock_qdrant)
     service.ml = mock_ml  # explicitly override for safety
@@ -53,4 +55,4 @@ def test_hybrid_search_empty(mock_get_instance):
     results = service.hybrid_search("test query", limit=5)
     
     assert len(results) == 0
-    mock_qdrant.search.assert_called_once()
+    mock_qdrant.query_points.assert_called_once()

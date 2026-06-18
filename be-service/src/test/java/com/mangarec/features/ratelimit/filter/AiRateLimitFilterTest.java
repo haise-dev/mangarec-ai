@@ -1,5 +1,7 @@
 package com.mangarec.features.ratelimit.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mangarec.common.util.RequestHashUtils;
 import com.mangarec.domain.user.entity.UserEntity;
 import com.mangarec.domain.user.model.SubscriptionStatus;
@@ -47,10 +49,13 @@ class AiRateLimitFilterTest {
     private FilterChain filterChain;
 
     private AiRateLimitFilter filter;
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        filter = new AiRateLimitFilter(redisRateLimiter, new RateLimitProperties());
+        objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        filter = new AiRateLimitFilter(redisRateLimiter, new RateLimitProperties(), objectMapper);
     }
 
     @AfterEach
@@ -72,7 +77,7 @@ class AiRateLimitFilterTest {
     }
 
     @Test
-    void guestChatRequestStopsWhenGuestQuotaIsExceeded() throws Exception {
+    void guestChatRequestReturnsSoftLimitWhenGuestQuotaIsExceeded() throws Exception {
         String guestId = "guest-123";
         MockHttpServletRequest request = chatRequest();
         request.setCookies(new Cookie(GuestSessionConstants.COOKIE_NAME, guestId));
@@ -85,9 +90,50 @@ class AiRateLimitFilterTest {
 
         filter.doFilter(request, response, filterChain);
 
+        // Soft limit assert
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getContentAsString()).contains("Vui lòng đăng nhập để trải nghiệm thêm nhiều tính năng");
+        verify(redisRateLimiter, never()).acquireConcurrent(any(), any(Integer.class), any());
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    void freeUserChatRequestReturnsSoftLimitWhenQuotaExceeded() throws Exception {
+        UUID userId = UUID.randomUUID();
+        setAuthenticatedFreeUser(userId);
+        MockHttpServletRequest request = chatRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        when(redisRateLimiter.checkSlidingWindow("rate_limit:user:" + userId + ":chat", 20, ONE_DAY))
+                .thenReturn(new RateLimitResult(false, 0, 600));
+
+        filter.doFilter(request, response, filterChain);
+
+        // Soft limit assert
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getContentAsString()).contains("Bạn đã dùng hết lượt chat miễn phí hôm nay. Vui lòng nâng cấp gói Pro để tiếp tục.");
+        verify(redisRateLimiter, never()).acquireConcurrent(any(), any(Integer.class), any());
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    void proUserChatRequestReturns429WhenQuotaExceeded() throws Exception {
+        UUID userId = UUID.randomUUID();
+        setAuthenticatedProUser(userId);
+        MockHttpServletRequest request = chatRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        when(redisRateLimiter.checkTokenBucket("rate_limit:pro:bucket:" + userId + ":chat", 30, 10, TOKEN_BUCKET_TTL))
+                .thenReturn(new RateLimitResult(true, 29, 0));
+        when(redisRateLimiter.checkSlidingWindow("rate_limit:pro:daily:" + userId + ":chat", 1000, ONE_DAY))
+                .thenReturn(new RateLimitResult(false, 0, 3600));
+
+        filter.doFilter(request, response, filterChain);
+
+        // Hard limit assert
         assertThat(response.getStatus()).isEqualTo(429);
-        assertThat(response.getHeader("Retry-After")).isEqualTo("600");
-        assertThat(response.getContentAsString()).contains("Guest AI quota exceeded");
+        assertThat(response.getHeader("Retry-After")).isEqualTo("3600");
+        assertThat(response.getContentAsString()).contains("Pro user AI rate limit exceeded");
         verify(redisRateLimiter, never()).acquireConcurrent(any(), any(Integer.class), any());
         verify(filterChain, never()).doFilter(any(), any());
     }
@@ -163,6 +209,18 @@ class AiRateLimitFilterTest {
         user.setId(userId);
         user.setEmail("pro@example.com");
         user.setSubscriptionStatus(SubscriptionStatus.PRO);
+
+        AuthenticatedUser principal = new AuthenticatedUser(user);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+        );
+    }
+
+    private void setAuthenticatedFreeUser(UUID userId) {
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        user.setEmail("free@example.com");
+        user.setSubscriptionStatus(SubscriptionStatus.FREE);
 
         AuthenticatedUser principal = new AuthenticatedUser(user);
         SecurityContextHolder.getContext().setAuthentication(

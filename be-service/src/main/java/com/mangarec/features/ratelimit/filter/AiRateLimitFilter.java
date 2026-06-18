@@ -1,7 +1,6 @@
 package com.mangarec.features.ratelimit.filter;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mangarec.common.util.RequestHashUtils;
 import com.mangarec.domain.user.model.SubscriptionStatus;
 import com.mangarec.features.guest.GuestSessionConstants;
@@ -10,6 +9,8 @@ import com.mangarec.features.ratelimit.model.AiRateLimitSubjectType;
 import com.mangarec.features.ratelimit.model.ConcurrencyPermit;
 import com.mangarec.features.ratelimit.model.RateLimitResult;
 import com.mangarec.features.ratelimit.service.RedisRateLimiter;
+import com.mangarec.common.response.ApiResponse;
+import com.mangarec.features.chat.controller.response.ChatResponse;
 import com.mangarec.security.AuthenticatedUser;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -42,6 +43,7 @@ public class AiRateLimitFilter extends OncePerRequestFilter {
 
     private final RedisRateLimiter redisRateLimiter;
     private final RateLimitProperties properties;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -73,6 +75,17 @@ public class AiRateLimitFilter extends OncePerRequestFilter {
         String api = apiKey(request);
         RateLimitResult rateLimitResult = checkRequestQuota(subject, request, api);
         if (!rateLimitResult.allowed()) {
+            String path = request.getServletPath();
+            if ("/api/chat".equals(path)) {
+                if (subject.type() == AiRateLimitSubjectType.GUEST) {
+                    writeSoftChatError(response, "Vui lòng đăng nhập để trải nghiệm thêm nhiều tính năng");
+                    return;
+                }
+                if (subject.type() == AiRateLimitSubjectType.FREE) {
+                    writeSoftChatError(response, "Bạn đã dùng hết lượt chat miễn phí hôm nay. Vui lòng nâng cấp gói Pro để tiếp tục.");
+                    return;
+                }
+            }
             writeError(response, request, HttpStatus.TOO_MANY_REQUESTS.value(),
                     "Too Many Requests", quotaMessage(subject.type()), rateLimitResult.retryAfterSeconds());
             return;
@@ -238,11 +251,24 @@ public class AiRateLimitFilter extends OncePerRequestFilter {
         body.setError(error);
         body.setMessage(message);
 
-        Gson gson = new GsonBuilder().create();
         response.setStatus(status);
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(gson.toJson(body));
+        response.getWriter().write(objectMapper.writeValueAsString(body));
+    }
+
+    private void writeSoftChatError(HttpServletResponse response, String message) throws IOException {
+        ChatResponse chatResponse = new ChatResponse(null, message, java.util.Collections.emptyList(), Instant.now());
+        ApiResponse<ChatResponse> apiResponse = ApiResponse.<ChatResponse>builder()
+                .status(200)
+                .message("Chat quota exceeded soft response")
+                .data(chatResponse)
+                .build();
+
+        response.setStatus(HttpStatus.OK.value());
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
     }
 
     private record AiRateLimitSubject(AiRateLimitSubjectType type, String id) {

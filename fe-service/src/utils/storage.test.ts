@@ -13,7 +13,7 @@ describe("storage utility", () => {
       accessToken: "access",
       refreshToken: "refresh",
       accessTokenExpiresAt: "expires",
-      user: { id: "1", email: "test@test.com", username: "test", roles: [] }
+      user: { id: "1", email: "test@test.com", name: "test", roles: [] } as any,
     };
 
     storage.setAuth(session);
@@ -27,7 +27,7 @@ describe("storage utility", () => {
   it("should clear auth", () => {
     storage.setAuth({
       accessToken: "a", refreshToken: "b", accessTokenExpiresAt: "c",
-      user: { id: "1", email: "e", username: "u", roles: [] }
+      user: { id: "1", email: "e", name: "u", roles: [] } as any,
     });
     storage.clearAuth();
     expect(storage.getAccessToken()).toBeNull();

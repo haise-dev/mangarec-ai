@@ -286,7 +286,6 @@ def main():
     args = parser.parse_args()
 
     logger.info("Initializing Database and Qdrant...")
-    init_db()
     init_qdrant()
 
     q_client = get_qdrant_client()

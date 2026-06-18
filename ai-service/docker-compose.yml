@@ -30,7 +30,7 @@ services:
       - ./data:/app/data
     depends_on:
       - qdrant
-    command: uv run scripts/scheduler.py
+    command: python scripts/scheduler.py
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -46,7 +46,6 @@ services:
 networks:
   mangarec-network:
     name: mangarec_global_network
-    external: true
 
 volumes:
   qdrant_data_prod:

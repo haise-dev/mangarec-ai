@@ -32,7 +32,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_etl_checkpoints_job_name'), 'etl_checkpoints', ['job_name'], unique=True)
-    op.drop_table('test_persist')
     # ### end Alembic commands ###
 
 

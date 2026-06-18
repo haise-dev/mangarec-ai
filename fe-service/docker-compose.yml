@@ -22,4 +22,3 @@ services:
 networks:
   mangarec-network:
     name: mangarec_global_network
-    external: true

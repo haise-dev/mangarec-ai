@@ -94,7 +94,6 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_related_mangas_manga_id'), 'related_mangas', ['manga_id'], unique=False)
     op.create_index(op.f('ix_related_mangas_related_manga_id'), 'related_mangas', ['related_manga_id'], unique=False)
-    op.drop_table('test_persist')
     # ### end Alembic commands ###
 
 

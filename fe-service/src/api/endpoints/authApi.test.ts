@@ -24,7 +24,7 @@ describe("authApi", () => {
 
   it("register", async () => {
     vi.mocked(publicApiClient.post).mockResolvedValue({ data: { data: "user" } });
-    expect(await register({ email: "a", password: "b", username: "c" })).toBe("user");
+    expect(await register({ email: "a", password: "b", name: "c" })).toBe("user");
   });
 
   it("loginWithGoogle", async () => {
@@ -39,7 +39,7 @@ describe("authApi", () => {
 
   it("resetPassword", async () => {
     vi.mocked(publicApiClient.post).mockResolvedValue({ data: "ok" });
-    expect(await resetPassword({ email: "a", code: "b", newPassword: "c" })).toBe("ok");
+    expect(await resetPassword({ email: "a", otp: "b", newPassword: "c", confirmPassword: "c" })).toBe("ok");
   });
 
   it("resendEmailVerification", async () => {
@@ -49,6 +49,6 @@ describe("authApi", () => {
 
   it("verifyEmail", async () => {
     vi.mocked(publicApiClient.post).mockResolvedValue({ data: "ok" });
-    expect(await verifyEmail({ email: "a", code: "b" })).toBe("ok");
+    expect(await verifyEmail({ email: "a", otp: "b" })).toBe("ok");
   });
 });

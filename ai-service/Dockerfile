@@ -34,13 +34,15 @@ ENV OMP_NUM_THREADS=1 \
 
 WORKDIR /app
 
-# Create data directory for SQLite database
-RUN mkdir -p /app/data
+# Create data and static directories
+RUN mkdir -p /app/data /app/static
 
 # Bring over installed packages from builder
 COPY --from=builder /app/.venv /app/.venv
 # Bring over application code
 COPY --from=builder /app/app ./app
+COPY alembic/ ./alembic/
+COPY alembic.ini ./
 # Bring over scripts
 COPY scripts/ ./scripts/
 # Bring over the cached HuggingFace model

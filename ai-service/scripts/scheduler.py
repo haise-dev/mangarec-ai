@@ -26,7 +26,7 @@ logger = logging.getLogger("scheduler")
 def run_seed():
     logger.info("Executing Seed Sync (1000 items)...")
     subprocess.run(
-        ["uv", "run", "scripts/ingest_manga.py", "--mode", "seed", "--limit", "1000"],
+        [sys.executable, "scripts/ingest_manga.py", "--mode", "seed", "--limit", "1000"],
         check=False,
     )
 
@@ -46,12 +46,12 @@ def run_daily():
 
     logger.info(f"Executing Daily Sync (Delta Sync for updated items)... Args: {updated_since_arg}")
     subprocess.run(
-        ["uv", "run", "scripts/ingest_manga.py", "--mode", "daily", "--limit", "500"] + updated_since_arg,
+        [sys.executable, "scripts/ingest_manga.py", "--mode", "daily", "--limit", "500"] + updated_since_arg,
         check=False,
     )
     logger.info("Executing Daily Sync (500 top followed items)...")
     subprocess.run(
-        ["uv", "run", "scripts/ingest_manga.py", "--mode", "seed", "--limit", "500"],
+        [sys.executable, "scripts/ingest_manga.py", "--mode", "seed", "--limit", "500"],
         check=False,
     )
 
@@ -59,7 +59,6 @@ def run_daily():
 def check_and_seed():
     """Checks if DB is empty, runs seed if it is."""
     try:
-        init_db()  # Ensure tables exist
         db = SessionLocal()
         count = db.query(Manga).count()
         db.close()

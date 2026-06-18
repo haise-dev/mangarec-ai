@@ -85,7 +85,7 @@ auth:
 
 rate-limit:
   ai:
-    guest-daily-limit: ${RATE_LIMIT_AI_GUEST_DAILY:20}
+    guest-daily-limit: ${RATE_LIMIT_AI_GUEST_DAILY:3}
     free-daily-limit: ${RATE_LIMIT_AI_FREE_DAILY:20}
     ip-daily-limit: ${RATE_LIMIT_AI_IP_DAILY:100}
     pro-burst-capacity: ${RATE_LIMIT_AI_PRO_BURST:30}

@@ -75,7 +75,7 @@ describe("AuthContext", () => {
     vi.mocked(storage.getOrCreateDeviceId).mockReturnValue("dev-1");
     const mockUser = { name: "Test" } as any;
     vi.mocked(login).mockResolvedValue({
-      accessToken: "access",
+      tokenType: "Bearer", accessToken: "access",
       refreshToken: "refresh",
       accessTokenExpiresAt: "expires",
       user: mockUser,
@@ -89,7 +89,7 @@ describe("AuthContext", () => {
 
     expect(login).toHaveBeenCalledWith({ email: "a@b.c", password: "pwd", deviceId: "dev-1" });
     expect(storage.setAuth).toHaveBeenCalledWith({
-      accessToken: "access",
+      tokenType: "Bearer", accessToken: "access",
       refreshToken: "refresh",
       accessTokenExpiresAt: "expires",
       user: mockUser,
@@ -108,10 +108,10 @@ describe("AuthContext", () => {
 
     let regResult;
     await act(async () => {
-      regResult = await result.current.register({ email: "a@b.c", password: "pwd", username: "Test" });
+      regResult = await result.current.register({ email: "a@b.c", password: "pwd", name: "Test" });
     });
 
-    expect(register).toHaveBeenCalledWith({ email: "a@b.c", password: "pwd", username: "Test", guestId: "guest-1" });
+    expect(register).toHaveBeenCalledWith({ email: "a@b.c", password: "pwd", name: "Test", guestId: "guest-1" });
     expect(regResult).toBe(mockUser);
   });
 
@@ -122,7 +122,7 @@ describe("AuthContext", () => {
     
     const mockUser = { name: "Test Google" } as any;
     vi.mocked(loginWithGoogle).mockResolvedValue({
-      accessToken: "access-g",
+      tokenType: "Bearer", accessToken: "access-g",
       refreshToken: "refresh-g",
       accessTokenExpiresAt: "expires-g",
       user: mockUser,

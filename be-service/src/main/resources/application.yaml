@@ -110,3 +110,6 @@ payos:
   cancel-url: ${PAYOS_CANCEL_URL:http://localhost:5173/payment/cancel}
   webhook-url: ${PAYOS_WEBHOOK_URL:http://localhost:8080/api/v1/payments/payos/webhook}
   payment-expiry-minutes: ${PAYOS_PAYMENT_EXPIRY_MINUTES:15}
+
+ai-service:
+  url: ${AI_SERVICE_URL:http://localhost:8000}

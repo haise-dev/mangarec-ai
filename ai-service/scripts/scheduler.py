@@ -26,7 +26,7 @@ logger = logging.getLogger("scheduler")
 def run_seed():
     logger.info("Executing Seed Sync (1000 items)...")
     subprocess.run(
-        ["uv", "run", "scripts/ingest_manga.py", "--mode", "seed", "--limit", "1000"],
+        [sys.executable, "scripts/ingest_manga.py", "--mode", "seed", "--limit", "1000"],
         check=False,
     )
 
@@ -46,31 +46,39 @@ def run_daily():
 
     logger.info(f"Executing Daily Sync (Delta Sync for updated items)... Args: {updated_since_arg}")
     subprocess.run(
-        ["uv", "run", "scripts/ingest_manga.py", "--mode", "daily", "--limit", "500"] + updated_since_arg,
+        [sys.executable, "scripts/ingest_manga.py", "--mode", "daily", "--limit", "500"] + updated_since_arg,
         check=False,
     )
     logger.info("Executing Daily Sync (500 top followed items)...")
     subprocess.run(
-        ["uv", "run", "scripts/ingest_manga.py", "--mode", "seed", "--limit", "500"],
+        [sys.executable, "scripts/ingest_manga.py", "--mode", "seed", "--limit", "500"],
         check=False,
     )
 
 
 def check_and_seed():
-    """Checks if DB is empty, runs seed if it is."""
-    try:
-        init_db()  # Ensure tables exist
-        db = SessionLocal()
-        count = db.query(Manga).count()
-        db.close()
+    """Checks if DB is empty, runs seed if it is. Retries if DB is not ready."""
+    max_retries = 10
+    retry_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            db = SessionLocal()
+            count = db.query(Manga).count()
+            db.close()
 
-        if count == 0:
-            logger.info("Database is empty. Initiating Auto-Seed process...")
-            run_seed()
-        else:
-            logger.info(f"Database already has {count} mangas. Skipping Auto-Seed.")
-    except Exception as e:
-        logger.error(f"Error checking DB for seed: {e}")
+            if count == 0:
+                logger.info("Database is empty. Initiating Auto-Seed process...")
+                run_seed()
+            else:
+                logger.info(f"Database already has {count} mangas. Skipping Auto-Seed.")
+            return # Success, exit retry loop
+            
+        except Exception as e:
+            logger.warning(f"Attempt {attempt + 1}/{max_retries}: Error checking DB for seed (DB might not be initialized yet by ai-service). Retrying in {retry_delay}s... Error: {e}")
+            time.sleep(retry_delay)
+            
+    logger.error("Failed to check DB for seed after maximum retries. Auto-Seed skipped.")
 
 
 if __name__ == "__main__":

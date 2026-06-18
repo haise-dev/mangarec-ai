@@ -27,6 +27,8 @@ dependencies = [
 dev = [
     "ruff>=0.15.16",
     "pytest>=9.0.3",
+    "pytest-cov>=5.0.0",
+    "pytest-asyncio>=0.23.0",
 ]
 
 [tool.ruff]

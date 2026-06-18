@@ -4,4 +4,4 @@ data/*.db-wal
 data/*.db-shm
 
 # agents
-ai-service/.antigravitycli
+ai-service/.antigravitycli.coverage

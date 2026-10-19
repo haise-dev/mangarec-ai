@@ -6,10 +6,12 @@ services:
       dockerfile: Dockerfile.dev
     container_name: ai-service-dev
     ports:
-      - "8000:8000"
+      - "${AI_PORT:-8000}:8000"
     networks:
       - mangarec-network
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       - QDRANT_HOST=qdrant
     volumes:
@@ -24,7 +26,9 @@ services:
     container_name: ai-worker-dev
     networks:
       - mangarec-network
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       - QDRANT_HOST=qdrant
     volumes:
@@ -37,7 +41,7 @@ services:
     image: qdrant/qdrant:latest
     container_name: qdrant-dev
     ports:
-      - "6333:6333"
+      - "${QDRANT_PORT:-6333}:6333"
     networks:
       - mangarec-network
     volumes:

@@ -1,0 +1,17 @@
+FROM eclipse-temurin:17-jdk-alpine
+
+WORKDIR /app
+
+# Copy Maven wrapper and pom.xml first to leverage Docker layer caching
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+
+RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B
+
+# Copy remaining source code (will be overwritten by volume mount in dev compose)
+COPY src src
+
+EXPOSE 8080
+
+CMD ["./mvnw", "spring-boot:run"]

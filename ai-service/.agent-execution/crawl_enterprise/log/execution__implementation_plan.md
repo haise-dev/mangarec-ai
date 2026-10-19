@@ -1,0 +1,12 @@
+## [2026-06-13 15:24:00] Task: Enterprise Crawl Pipeline
+- **Action:** Update
+- **Files Affected:**
+  - `app/db/models.py`
+  - `app/core/config.py`
+  - `scripts/ingest_manga.py`
+  - `scripts/scheduler.py`
+  - `tests/test_etl_logic.py`
+  - `alembic/versions/18713387e18c_add_etlcheckpoint_model.py`
+- **Summary:** Upgraded the ETL pipeline to enterprise standards: Added EtlCheckpoint model via Alembic for resume-on-crash, implemented Delta Sync using updatedAtSince for the daily cronjob, hardened resilience using tenacity exponential backoff, and added a Discord/Telegram Webhook alerting system for critical pipeline failures.
+- **Verify:** Run `docker exec ai-worker-dev uv run pytest tests/test_etl_logic.py -v`.
+- **Status:** ✅ Success

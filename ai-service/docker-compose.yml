@@ -1,0 +1,51 @@
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-service-prod
+    ports:
+      - "8000:8000"
+    networks:
+      - mangarec-network
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data:/app/data
+
+  ai-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-worker-prod
+    networks:
+      - mangarec-network
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - qdrant
+    command: python scripts/scheduler.py
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-prod
+    ports:
+      - "6333:6333"
+    networks:
+      - mangarec-network
+    volumes:
+      - qdrant_data_prod:/qdrant/storage
+    restart: unless-stopped
+
+networks:
+  mangarec-network:
+    name: mangarec_global_network
+
+volumes:
+  qdrant_data_prod:

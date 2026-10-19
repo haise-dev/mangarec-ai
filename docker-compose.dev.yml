@@ -1,0 +1,6 @@
+name: mangarec-dev
+
+include:
+  - ./ai-service/docker-compose.dev.yml
+  - ./be-service/docker-compose.dev.yml
+  - ./fe-service/docker-compose.dev.yml

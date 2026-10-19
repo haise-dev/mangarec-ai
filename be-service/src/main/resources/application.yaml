@@ -1,0 +1,115 @@
+server:
+  port: 8080
+
+spring:
+  config:
+    import: optional:file:.env[.properties]
+
+  application:
+    name: mangarec-be
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/mangarec?currentSchema=mangarec}
+    username: ${SPRING_DATASOURCE_USERNAME:mangarec}
+    password: ${SPRING_DATASOURCE_PASSWORD:mangarec_password}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    schemas: mangarec
+    default-schema: mangarec
+    baseline-on-migrate: true
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: mangarec
+        jdbc:
+          time_zone: UTC
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      repositories:
+        enabled: false
+
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+openapi:
+  service:
+    api-docs: ${OPENAPI_DOCS:mangarec}
+    server: ${OPENAPI_SERVER:http://localhost:${server.port}}
+    title: ${OPENAPI_TITLE:MangaRec Backend API}
+    version: ${OPENAPI_VERSION:1.0.0}
+
+jwt:
+  expiryMinutes: ${JWT_EXPIRY_MINUTES:60}
+  expiryDay: ${JWT_EXPIRY_DAY:14}
+  accessKey: ${JWT_ACCESS_KEY:4EL1miEw6QltfOwjs3qYfIctGOjynm3UhrFnicj7mp8=}
+  refreshKey: ${JWT_REFRESH_KEY:58DrWQsRoCA7YLSb5rnrgQkMa1xZ/+w2lL4iZoSQxuY=}
+
+google:
+  auth:
+    client-id: ${GOOGLE_AUTH_CLIENT_ID:}
+
+auth:
+  email-verification:
+    otp-expiry-minutes: ${EMAIL_VERIFICATION_OTP_EXPIRY_MINUTES:10}
+  password-reset:
+    otp-expiry-minutes: ${PASSWORD_RESET_OTP_EXPIRY_MINUTES:10}
+
+rate-limit:
+  ai:
+    guest-daily-limit: ${RATE_LIMIT_AI_GUEST_DAILY:3}
+    free-daily-limit: ${RATE_LIMIT_AI_FREE_DAILY:20}
+    ip-daily-limit: ${RATE_LIMIT_AI_IP_DAILY:100}
+    pro-burst-capacity: ${RATE_LIMIT_AI_PRO_BURST:30}
+    pro-refill-per-minute: ${RATE_LIMIT_AI_PRO_REFILL_PER_MINUTE:10}
+    pro-daily-limit: ${RATE_LIMIT_AI_PRO_DAILY:1000}
+    concurrent:
+      guest: ${RATE_LIMIT_AI_CONCURRENT_GUEST:1}
+      free: ${RATE_LIMIT_AI_CONCURRENT_FREE:2}
+      pro: ${RATE_LIMIT_AI_CONCURRENT_PRO:5}
+  otp:
+    email-window-limit: ${RATE_LIMIT_OTP_EMAIL_15M:3}
+    email-daily-limit: ${RATE_LIMIT_OTP_EMAIL_DAILY:5}
+    ip-window-limit: ${RATE_LIMIT_OTP_IP_15M:10}
+    ip-daily-limit: ${RATE_LIMIT_OTP_IP_DAILY:30}
+
+payos:
+  client-id: ${PAYOS_CLIENT_ID:}
+  api-key: ${PAYOS_API_KEY:}
+  checksum-key: ${PAYOS_CHECKSUM_KEY:}
+  base-url: ${PAYOS_BASE_URL:https://api-merchant.payos.vn}
+  return-url: ${PAYOS_RETURN_URL:http://localhost:5173/payment/success}
+  cancel-url: ${PAYOS_CANCEL_URL:http://localhost:5173/payment/cancel}
+  webhook-url: ${PAYOS_WEBHOOK_URL:http://localhost:8080/api/v1/payments/payos/webhook}
+  payment-expiry-minutes: ${PAYOS_PAYMENT_EXPIRY_MINUTES:15}
+
+ai-service:
+  url: ${AI_SERVICE_URL:http://localhost:8000}

@@ -1,0 +1,77 @@
+services:
+  be-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: be-service-dev
+    ports:
+      - "${BE_PORT:-8080}:8080"
+    networks:
+      - mangarec-network
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mangarec}?currentSchema=mangarec
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-mangarec}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-mangarec_password}
+      SPRING_FLYWAY_ENABLED: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      AI_SERVICE_URL: http://ai-service-dev:8000
+    volumes:
+      - .:/app
+      - be_m2_cache:/root/.m2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-dev
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mangarec}
+      POSTGRES_USER: ${POSTGRES_USER:-mangarec}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mangarec_password}
+      TZ: UTC
+    networks:
+      - mangarec-network
+    volumes:
+      - pg_data_dev:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-mangarec} -d $${POSTGRES_DB:-mangarec}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-dev
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - mangarec-network
+    volumes:
+      - redis_data_dev:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+networks:
+  mangarec-network:
+    name: mangarec_global_network
+    external: true
+
+volumes:
+  pg_data_dev:
+  redis_data_dev:
+  be_m2_cache:

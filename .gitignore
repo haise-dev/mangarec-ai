@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.ruff_cache/
+.pytest_cache/
+*.sqlite
+*.db
+*.db-shm
+*.db-wal
+
+# Java
+target/
+*.class
+*.jar
+.mvn/wrapper/maven-wrapper.jar
+
+# Node & Frontend
+node_modules/
+.next/
+out/
+build/
+dist/
+coverage/
+
+# Environment files
+.env
+*.env.local
+
+# IDE & OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Agent rules and metadata
+.agent/

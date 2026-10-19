@@ -1,0 +1,56 @@
+# docker compose -f docker-compose.dev.yml up -d --build
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: ai-service-dev
+    ports:
+      - "${AI_PORT:-8000}:8000"
+    networks:
+      - mangarec-network
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - QDRANT_HOST=qdrant
+    volumes:
+      # Mount entire source code for hot-reloading
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  ai-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: ai-worker-dev
+    networks:
+      - mangarec-network
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - QDRANT_HOST=qdrant
+    volumes:
+      - .:/app
+    depends_on:
+      - qdrant
+    command: uv run scripts/scheduler.py
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-dev
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+    networks:
+      - mangarec-network
+    volumes:
+      - qdrant_data_dev:/qdrant/storage
+
+networks:
+  mangarec-network:
+    name: mangarec_global_network
+    external: true
+
+volumes:
+  qdrant_data_dev:

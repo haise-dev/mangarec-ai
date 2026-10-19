@@ -1,0 +1,6 @@
+name: mangarec-prod
+
+include:
+  - ./ai-service/docker-compose.yml
+  - ./be-service/docker-compose.yml
+  - ./fe-service/docker-compose.yml
